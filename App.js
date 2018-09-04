@@ -80,14 +80,15 @@ export default class App extends React.Component {
   async toggleSchedule() {
     if (this.state.scheduled) {
       BackgroundTask.cancel();
-      this.setState({scheduled: false});
+      await StorageService.setServiceStatus(false);
     } else {
       if (this.checkStatus()) {
         LocationService.getLocation();
+        BackgroundTask.cancel();
         BackgroundTask.schedule({
           period: 1800, // Aim to run every 30 mins - more conservative on battery
         });
-        this.setState({scheduled: true});
+        await StorageService.setServiceStatus(true);
       }
     }
     await this.refreshData();
@@ -99,11 +100,13 @@ export default class App extends React.Component {
       const error = await StorageService.getError();
       const location = await StorageService.getLocation();
       const timestamp = await StorageService.getTimestamp();
+      const scheduled = await StorageService.getServiceStatus();
       this.setState({
         coordinates,
         error,
         location,
         timestamp,
+        scheduled,
       });
     } catch (e) {
       console.log(e);
@@ -135,8 +138,15 @@ export default class App extends React.Component {
 
   async componentDidMount() {
     await this.refreshData();
+    if (this.state.scheduled) {
+      BackgroundTask.cancel();
+      BackgroundTask.schedule({
+        period: 1800,
+      });
+    } else {
+      BackgroundTask.cancel();
+    }
   }
-
 
   render() {
 

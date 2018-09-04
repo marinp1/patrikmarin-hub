@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   city: 'city',
   country: 'country',
   timestamp: 'timestamp',
+  service: 'service',
 }
 
 const setLatLng = async (latitude, longitude) => {
@@ -34,6 +35,14 @@ const setLocation = async (city, country) => {
     const date = new Date();
     const dateAsString = date.toLocaleString('fi-FI');
     await AsyncStorage.setItem(`${STORAGE_NAME}:${STORAGE_KEYS.timestamp}`, String(dateAsString));
+  } catch (error) {
+    // Error saving data
+  }
+}
+
+const setServiceStatus = async (status) => {
+  try {
+    await AsyncStorage.setItem(`${STORAGE_NAME}:${STORAGE_KEYS.service}`, String(status));
   } catch (error) {
     // Error saving data
   }
@@ -93,12 +102,25 @@ const getTimestamp = async () => {
    }
 }
 
+const getServiceStatus = async () => {
+  try {
+    const status = await AsyncStorage.getItem(`${STORAGE_NAME}:${STORAGE_KEYS.service}`);
+    if (status === 'true') return true;
+    if (status === 'false') return false;
+    return false;
+   } catch (error) {
+    return false;
+   }
+}
+
 export default {
   setLatLng,
   setError,
   setLocation,
+  setServiceStatus,
   getLatLng,
   getError,
   getLocation,
   getTimestamp,
+  getServiceStatus,
 }
