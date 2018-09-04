@@ -1,8 +1,10 @@
 import base64 from 'base-64';
 import StorageService from './StorageService';
 import { GOOGLE_API_KEY, LOC_USERNAME, LOC_PASSWORD, POST_BASE_URL } from 'react-native-dotenv';
+import Geolocation from 'react-native-geolocation-service';
 
 const sendLocation = async (latitude, longitude) => {
+  if (!latitude || !longitude) return;
   const location = await reverseGeolocate(latitude, longitude);
   const headers = new Headers();
   headers.append('Authorization', 'Basic ' + base64.encode(`${LOC_USERNAME}:${LOC_PASSWORD}`));
@@ -21,17 +23,30 @@ const sendLocation = async (latitude, longitude) => {
   }
 }
 
-const getLocation = async () => {
-  let coordinates = await StorageService.getLatLng();
-
-  navigator.geolocation.getCurrentPosition(
+const getInAccuratePosition = () => {
+  Geolocation.getCurrentPosition(
     async (position) => {
       await StorageService.setLatLng(position.coords.latitude, position.coords.longitude);
       await StorageService.setError(null);
-      coordinates = await StorageService.getLatLng();
     },
     async (error) => await StorageService.setError(error.message),
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 600000 },
+    { enableHighAccuracy: false, timeout: 30000, maximumAge: 600000 },
+  );
+}
+
+const getLocation = async () => {
+  let coordinates = await StorageService.getLatLng();
+
+  Geolocation.getCurrentPosition(
+      async (position) => {
+        await StorageService.setLatLng(position.coords.latitude, position.coords.longitude);
+        await StorageService.setError(null);
+      },
+      (error) => {
+        console.log(error.code, error.message);
+        getInAccuratePosition();
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 600000 }
   );
 
   await sendLocation(coordinates.lat, coordinates.lng);

@@ -21,7 +21,7 @@ const setLatLng = async (latitude, longitude) => {
 
 const setError = async (error) => {
   try {
-    await AsyncStorage.setItem(`${STORAGE_NAME}:${STORAGE_KEYS.error}`, error);
+    await AsyncStorage.setItem(`${STORAGE_NAME}:${STORAGE_KEYS.error}`, String(error));
   } catch (error) {
     // Error saving data
   }
