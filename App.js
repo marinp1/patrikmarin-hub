@@ -1,6 +1,6 @@
 import React from 'react';
 import BackgroundTask from 'react-native-background-task'
-import { Alert, FlatList, StyleSheet, View, StatusBar, Text } from 'react-native';
+import { Platform, Alert, FlatList, StyleSheet, View, StatusBar, Text, Linking } from 'react-native';
 import LocationService from './LocationService';
 import StorageService from './StorageService';
 import RefreshButton from './components/RefreshButton';
@@ -13,6 +13,19 @@ BackgroundTask.define(async () => {
   LocationService.getLocation();
   BackgroundTask.finish();
 });
+
+const openMapForLocation = (lat, lng) => {
+  console.log('hellko');
+  if (!lat || !lng) return null;
+  const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
+  const latLng = `${lat},${lng}`;
+  const label = 'Current Location';
+  const url = Platform.select({
+    ios: `${scheme}${label}@${latLng}`,
+    android: `${scheme}${latLng}(${label})`
+  });
+  Linking.openURL(url); 
+}
 
 export default class App extends React.Component {
 
@@ -120,6 +133,7 @@ export default class App extends React.Component {
         iconName: 'md-compass',
         key: 'Coordinates',
         value: coords,
+        onPress: () => openMapForLocation(this.state.coordinates.latitude, this.state.coordinates.longitude),
       },
       {
         iconName: 'md-pin',
