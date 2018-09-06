@@ -49,7 +49,7 @@ const getLocation = async () => {
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 600000 }
   );
 
-  await sendLocation(coordinates.lat, coordinates.lng);
+  await sendLocation(coordinates.latitude, coordinates.longitude);
 }
 
 

@@ -4472,6 +4472,10 @@ react-native-geolocation-service@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/react-native-geolocation-service/-/react-native-geolocation-service-1.1.0.tgz#21782c516bb28b92fcce0d6fbb20c3770d4df278"
 
+react-native-pulse@^1.0.6:
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/react-native-pulse/-/react-native-pulse-1.0.6.tgz#6d33260ad53730a8c12c96eac1453c31eb80c91a"
+
 react-native-vector-icons@^5.0.0:
   version "5.0.0"
   resolved "https://registry.yarnpkg.com/react-native-vector-icons/-/react-native-vector-icons-5.0.0.tgz#d0bd6fdda01159db409810718dd04904951a98f5"

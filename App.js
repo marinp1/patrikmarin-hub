@@ -1,97 +1,39 @@
 import React from 'react';
 import BackgroundTask from 'react-native-background-task'
-import { Alert, View } from 'react-native';
-import { Button, Icon, Text, List, ListItem } from 'react-native-elements';
-
+import { Alert, FlatList, StyleSheet, View, StatusBar, Text } from 'react-native';
 import LocationService from './LocationService';
 import StorageService from './StorageService';
-
-import { styles } from './Styles';
+import RefreshButton from './components/RefreshButton';
+import StatusButton from './components/StatusButton';
+import RemoveLocationButton from './components/RemoveLocationButton';
+import ListItem from './components/ListItem';
+import { COLORS } from './styles';
 
 BackgroundTask.define(async () => {
   LocationService.getLocation();
   BackgroundTask.finish();
 });
 
-const Light = ({color}) => (
-  <View style={{
-    position: 'absolute',
-    right: 20,
-    height: 15,
-    width: 15,
-    backgroundColor: color,
-    borderRadius: 50,
-  }}/>
-);
-
-const CustomButton = ({color, backgroundColor, title, onPress}) => (
-  <Button
-    raised
-    large
-    buttonStyle={{
-      backgroundColor,
-    }}
-    title={title}
-    containerViewStyle={{width: '100%', marginBottom: 10}}
-    borderRadius={10}
-    color={color}
-    onPress={onPress}
-    underlayColor={'black'}
-  />
-);
-
-const RefreshButton = ({onPress}) => (
-  <View style={styles.refresh}>
-    <Icon
-      onPress={onPress}
-      size={20}
-      reverse
-      raised
-      name='refresh'
-      type='font-awesome'
-      color='#9C27B0'
-      underlayColor={'black'}
-    />
-  </View>
-);
-
 export default class App extends React.Component {
 
   constructor(props) {
     super(props);
     this.state = {
-      scheduled: false,
+      trackingActive: false,
+      timestamp: null,
       coordinates: {
-        lat: null,
-        lng: null,
+        latitude: null,
+        longitude: null,
       },
-      error: null,
       location: {
         city: null,
         country: null,
       },
-      timestamp: null,
-    };
-    this.toggleSchedule = this.toggleSchedule.bind(this);
-    this.refreshData = this.refreshData.bind(this);
-    this.clearData = this.clearData.bind(this);
-  }
-
-  async toggleSchedule() {
-    if (this.state.scheduled) {
-      BackgroundTask.cancel();
-      await StorageService.setServiceStatus(false);
-    } else {
-      if (this.checkStatus()) {
-        LocationService.getLocation();
-        BackgroundTask.cancel();
-        BackgroundTask.schedule({
-          period: 1800, // Aim to run every 30 mins - more conservative on battery
-        });
-        await StorageService.setServiceStatus(true);
-      }
+      error: null,
     }
-    await this.refreshData();
+    this.refreshData = this.refreshData.bind(this);
+    this.toggleTrackingService = this.toggleTrackingService.bind(this);
+    this.removeLocation = this.removeLocation.bind(this);
   }
 
   async refreshData() {
@@ -100,45 +42,58 @@ export default class App extends React.Component {
       const error = await StorageService.getError();
       const location = await StorageService.getLocation();
       const timestamp = await StorageService.getTimestamp();
-      const scheduled = await StorageService.getServiceStatus();
+      const trackingActive = await StorageService.getServiceStatus();
       this.setState({
         coordinates,
         error,
         location,
         timestamp,
-        scheduled,
+        trackingActive,
       });
     } catch (e) {
       console.log(e);
     }
   }
 
-  async clearData() {
+  async toggleTrackingService() {
+    const checkStatus = async () => {
+      const status = await BackgroundTask.statusAsync();
+      if (status.available) return true;
+
+      const reason = status.unavailableReason;
+      if (reason === BackgroundTask.UNAVAILABLE_DENIED) {
+        Alert.alert('Denied', 'Please enable background "Background App Refresh" for this app');
+      } else if (reason === BackgroundTask.UNAVAILABLE_RESTRICTED) {
+        Alert.alert('Restricted', 'Background tasks are restricted on your device');
+      }
+      return false;
+    }
+
+    if (this.state.trackingActive) {
+      BackgroundTask.cancel();
+      await StorageService.setServiceStatus(false);
+      await this.refreshData();
+    } else {
+      if (checkStatus()) {
+        LocationService.getLocation();
+        BackgroundTask.cancel();
+        BackgroundTask.schedule({
+          period: 1800, // Aim to run every 30 mins - more conservative on battery
+        });
+        await StorageService.setServiceStatus(true);
+        await this.refreshData();
+      }
+    }
+  }
+
+  async removeLocation() {
     await LocationService.removeLocation();
     await this.refreshData();
   }
 
-  async checkStatus() {
-    const status = await BackgroundTask.statusAsync();
-    
-    if (status.available) {
-      // Everything's fine
-      return true;
-    }
-    
-    const reason = status.unavailableReason;
-    if (reason === BackgroundTask.UNAVAILABLE_DENIED) {
-      Alert.alert('Denied', 'Please enable background "Background App Refresh" for this app');
-    } else if (reason === BackgroundTask.UNAVAILABLE_RESTRICTED) {
-      Alert.alert('Restricted', 'Background tasks are restricted on your device');
-    }
-
-    return false;
-  }
-
   async componentDidMount() {
     await this.refreshData();
-    if (this.state.scheduled) {
+    if (this.state.trackingActive) {
       BackgroundTask.cancel();
       BackgroundTask.schedule({
         period: 1800,
@@ -148,68 +103,87 @@ export default class App extends React.Component {
     }
   }
 
-  render() {
+  stateToData(state) {
+    const ts = state.timestamp ? state.timestamp : 'Not set';
+    const coords = state.coordinates.latitude && state.coordinates.longitude ?
+      `${state.coordinates.latitude}, ${state.coordinates.longitude}` : 'Not set';
+    const location = state.location.city && state.location.country ?
+      `${state.location.city}, ${state.location.country}` : 'Not set';
 
-    const toggleButtonBg = this.state.scheduled ? '#F4511E' : '#009688';
-    const toggleButtonTitle = this.state.scheduled ? "Disable location services" : "Enable location services";
-    const lightColor = this.state.scheduled ? '#009688' : '#F4511E';
-
-    const lastUpdate = [
+    return [
       {
-        title: 'Timestamp',
-        content: `${this.state.timestamp}`
+        iconName: 'md-clock',
+        key: 'Timestamp',
+        value: ts,
       },
       {
-        title: 'Coordinates',
-        content: `${this.state.coordinates.lat}, ${this.state.coordinates.lng}`
+        iconName: 'md-compass',
+        key: 'Coordinates',
+        value: coords,
       },
       {
-        title: 'Location',
-        content: `${this.state.location.city}, ${this.state.location.country}`
+        iconName: 'md-pin',
+        key: 'Location',
+        value: location,
       },
     ]
+  }
+
+  render() {
+    const data = this.stateToData(this.state);
 
     return (
       <React.Fragment>
-        <View style={styles.container}>
-          <View style={styles.infoContainer}>
-              <Text>Location services {this.state.scheduled ? 'ON' : 'OFF'}</Text>
-              <Light color={lightColor} />
-          </View>
-          <CustomButton
-            color="#fff"
-            backgroundColor={toggleButtonBg}
-            title={toggleButtonTitle}
-            onPress={this.toggleSchedule}
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor="#FFFFFF"
+        />
+        <View style={styles.header}>
+          <Text style={styles.title}>LOCATION TRACKER</Text>
+        </View>
+        <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+          <StatusButton
+            active={this.state.trackingActive}
+            onPress={this.toggleTrackingService}
           />
-          {this.state.error && this.state.error !== 'null' &&
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorHeader}>Unable to send location!</Text>
-              <Text>{this.state.error}</Text>
-            </View>
-          }
-          <View style={styles.listContainer}>
-            <Text h4 style={styles.lastUpdateStyle}>Last update</Text>
-            <List containerStyle={{width: '100%'}}>
-              {lastUpdate.map((l) => (
-                  <ListItem
-                    hideChevron
-                    key={l.title}
-                    subtitle={l.content}
-                    title={l.title}
-                  />
-                ))}
-            </List>
-            <RefreshButton onPress={this.refreshData}/>
-          </View>
-          <CustomButton
-            color="#333"
-            backgroundColor="#e1e1e1"
-            title="Remove location"
-            onPress={this.clearData}
+        </View>
+        <RefreshButton onPress={this.refreshData}/>
+        <View style={styles.lastContainer}>
+          <Text style={styles.lastTitle}>LAST LOCATION</Text>
+          <FlatList
+            data={data}
+            renderItem={({item}) => <ListItem item={item}/>}
           />
+          <RemoveLocationButton onPress={this.removeLocation} />
         </View>
       </React.Fragment>
     )
   }
 }
+
+const styles = StyleSheet.create({
+  header: {
+    backgroundColor: '#fff',
+    elevation: 2,
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  title: {
+    fontSize: 26,
+    fontFamily: 'montserrat',
+    fontWeight: 'bold',
+    alignSelf: 'center',
+  },
+  lastContainer: {
+    elevation: 10,
+    flexGrow: 1,
+    backgroundColor: COLORS.lightGray,
+    padding: 40,
+  },
+  lastTitle: {
+    fontSize: 24,
+    marginBottom: 30,
+    fontFamily: 'montserrat',
+    fontWeight: 'bold',
+  },
+});

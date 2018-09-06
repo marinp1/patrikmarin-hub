@@ -50,18 +50,16 @@ const setServiceStatus = async (status) => {
 
 const getLatLng = async () => {
   try {
-    const lat = await AsyncStorage.getItem(`${STORAGE_NAME}:${STORAGE_KEYS.latitude}`);
-    const lng = await AsyncStorage.getItem(`${STORAGE_NAME}:${STORAGE_KEYS.longitude}`);
-    if (!!lat && !!lng) {
-      return {
-        lat,
-        lng,
-      }
+    const latitude = await AsyncStorage.getItem(`${STORAGE_NAME}:${STORAGE_KEYS.latitude}`);
+    const longitude = await AsyncStorage.getItem(`${STORAGE_NAME}:${STORAGE_KEYS.longitude}`);
+    return {
+      latitude: latitude !== 'null' ? latitude : null,
+      longitude: longitude !== 'null' ? longitude : null,
     }
    } catch (error) {
       return {
-        lat: null,
-        lng: null,
+        latitude: null,
+        longitude: null,
       }
    }
 }
@@ -81,8 +79,8 @@ const getLocation = async () => {
     const city = await AsyncStorage.getItem(`${STORAGE_NAME}:${STORAGE_KEYS.city}`);
     const country = await AsyncStorage.getItem(`${STORAGE_NAME}:${STORAGE_KEYS.country}`);
     return {
-      city: city || null,
-      country: country || null,
+      city: city !== 'null' ? city : null,
+      country: country !== 'null' ? country : null
     }
    } catch (error) {
     return {
